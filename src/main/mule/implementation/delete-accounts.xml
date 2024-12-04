@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	
+	<flow name="delete-accountsFlow" doc:id="e4b722e0-0a5f-4406-8a76-a5de407c25ab" >
+		<logger level="INFO" doc:name="Flow Start Logger" doc:id="6c9ec68c-01bc-484b-bc47-fc8c31d73a86" message='Delete Account Flow Start for Account Id #[attributes.uriParams.account_id default ""]'/>
+		<ee:transform doc:name="Set Request Attributes" doc:id="62dc2b00-962e-4919-8072-c295f8ab31ff">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="accountId"><![CDATA[attributes.uriParams.account_id]]></ee:set-variable>
+				<ee:set-variable variableName="operation"><![CDATA["Deleted"]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<until-successful maxRetries="2" doc:name="Until Successful" doc:id="46b7238a-c411-4ea5-a07d-c79c4661d766" millisBetweenRetries="30000">
+			<try doc:name="Try" doc:id="78a0edb0-5a95-4488-acbb-c883f9625dbc" >
+				<salesforce:delete doc:name="Delete" doc:id="36009bf5-573b-4a47-ba4f-fe8a57619438" config-ref="salesforce-config">
+					<salesforce:ids ><![CDATA[#[[vars.accountId]]]]></salesforce:ids>
+				</salesforce:delete>
+				<error-handler >
+					<on-error-continue enableNotifications="false" logException="false" doc:name="On Error Continue" doc:id="32c25325-5eee-403b-bb90-73ff52e3bfec" when="#[error.errorType.identifier != 'CONNECTIVITY']">
+						<ee:transform doc:name="Set Error Variable" doc:id="00b1be55-bb6a-4ce5-a4e4-ca4cec933677" >
+							<ee:message >
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="errorObject" ><![CDATA[error]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+					</on-error-continue>
+				</error-handler>
+			</try>
+		</until-successful>
+		<logger level="INFO" doc:name="Log Respose After Calling SFDC" doc:id="e85cebc3-6f5c-46db-aa74-cec3c476e566" message=" Delete Account Response After Calling SFDC: #[output json --- payload]"/>
+		<flow-ref doc:name="error-checkpoint-subflow" doc:id="0cce1f83-29dc-4b87-89c3-152179df4ac5" name="sfdc-checkpoint-subflow"/>
+		<ee:transform doc:name="Map Delete Account Response" doc:id="75ce3de8-7140-4ada-bb10-37184c8db107" >
+			<ee:message >
+				<ee:set-payload resource="dataweave/set-common-success-response.dwl" />
+			
+</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Flow End Logger" doc:id="d1822abe-2930-4ad9-bfd9-0ab30cadb39c" message="Delete Account Flow End"/>
+		<error-handler ref="globalError_Handler" />
+	</flow>
+	
+	
+	
+	</mule>
