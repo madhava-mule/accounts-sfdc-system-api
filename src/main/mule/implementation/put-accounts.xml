@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<flow name="put-accountsFlow" doc:id="44f4042c-d167-414d-9999-1eb714e373b3" >
+		<logger level="INFO" doc:name="Flow Start Logger" doc:id="ff8d5751-cfd1-4d7b-9a7c-006cac0ee57e" message='Update Account Flow Start for Account Id #[attributes.uriParams.account_id default ""]'/>
+		<logger level="INFO" doc:name="Original Payload" doc:id="759b894b-8b90-40ed-98bb-d9c127d0f550" message="Update Account Original Payload #[payload]"/>
+		<ee:transform doc:name="Map SFDC Account Request" doc:id="c13bcf39-c72e-4d6e-ab07-793482ef4336">
+			<ee:message>
+				<ee:set-payload resource="dataweave/map-update-account-request.dwl" />
+			
+</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="operation" ><![CDATA["Updated"]]></ee:set-variable>
+
+			</ee:variables>
+		</ee:transform>
+		<until-successful maxRetries="2" doc:name="Until Successful" doc:id="4d0b9387-b139-4d63-852a-de43eb0103c8" millisBetweenRetries="30000">
+			<try doc:name="Try" doc:id="766f245a-b2bb-4939-ba07-5852889fabc3" >
+				<salesforce:update doc:name="Update" doc:id="9456c74e-f952-47d0-adc8-b7a582a277da" config-ref="salesforce-config" type="Account">
+				</salesforce:update>
+				<error-handler >
+					<on-error-continue enableNotifications="false" logException="false" doc:name="On Error Continue" doc:id="4ea27bc9-f182-40bd-82fb-024229af61b2" when="#[error.errorType.identifier != 'CONNECTIVITY']">
+						<ee:transform doc:name="Transform Message" doc:id="3e42a7cf-e10a-4e9d-b325-90c65101ff64" >
+							<ee:message >
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="errorObject" ><![CDATA[error]]></ee:set-variable>
+								<ee:set-variable variableName="errrorPayload" ><![CDATA[error.errorMessage.payload]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+					</on-error-continue>
+				</error-handler>
+			</try>
+		</until-successful>
+		<logger level="INFO" doc:name="Log Response After Calling SFDC" doc:id="fe08052a-1994-4b2e-9e96-c617a1b5d5d5" message="#[%dw 2.0&#10;output application/json&#10;---&#10;payload]"/>
+		<flow-ref doc:name="error-checkpoint-subflow" doc:id="94067563-24b9-4791-954c-341f4f62c26e" name="sfdc-checkpoint-subflow"/>
+		<flow-ref doc:name="sfdc-success-checkpoint-subflow" doc:id="65b957fb-7d55-4109-8044-03253bc1f3b7" name="sfdc-success-checkpoint-subflow"/>
+		<ee:transform doc:name="Map success response" doc:id="ff2665b6-dae6-4d24-82f1-00dfd9a36b94" >
+			<ee:message >
+				<ee:set-payload resource="dataweave/set-common-success-response.dwl" />
+			
+</ee:message>
+		</ee:transform>
+		<error-handler ref="globalError_Handler" />
+	
+</flow>
+	
+	
+	</mule>

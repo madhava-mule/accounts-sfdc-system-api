@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	
+	<flow name="sfdc-success-checkpoint-subflow" doc:id="5ef73234-3795-4429-b944-dc937829bfeb" >
+		<choice doc:name="Choice" doc:id="32572be8-8529-4c64-9b31-baa587722583" >
+			<when expression="#[payload.successful == true]" >
+				<set-variable value="#[payload.items.id]" doc:name="Set Account Id" doc:id="7b780a93-c2bf-4e0e-9ce1-79dd9b0357e8" variableName="accountId" />
+				<logger level="INFO" doc:name="Log Process Complete" doc:id="8ea340d4-2702-48c4-a4b2-40245b175370" message='errors from SFDC response. Process will continue' category="com.effinium.accounts-sfdc-sapi" />
+            
+</when>
+            <otherwise>
+                <set-variable value='#[if(lower(payload.items[0].exception.message) contains lower("MALFORMED")) 400 else if (lower(payload.items[0].exception.message) contains lower("DUPLICATES")) 409 else 500]' doc:name="Set HTTP Status" doc:id="cbfedf3b-59d3-4faa-b2f1-5d8fc167197a" variableName="httpStatus" />
+                <raise-error doc:name="Raise Custom Error" doc:id="9848c8db-33aa-428f-a705-94b2a00069ce" type="SFDC:CUSTOM_ERROR" description="#[payload.items[0].message]"/>
+            </otherwise>
+		</choice>
+	</flow>
+	<sub-flow name="sfdc-checkpoint-subflow" doc:id="2e409c5e-fe39-4407-b4dd-d5e2b29d61ab" >
+		<choice doc:name="Choice" doc:id="e281867c-fb08-45c0-b824-4eabddb54b50" >
+			<when expression="#[vars.errorObject.errorType.identifier == 'INVALID_INPUT']">
+				<set-variable value="#[400 as Number]" doc:name="Set HTTP Status" doc:id="61e56cde-939a-4096-8352-01f760bcc1a4" variableName="httpStatus"/>
+				<raise-error doc:name="Raise error" doc:id="59841021-4f56-4ffa-973c-423d8926a1a0" type="SFDC:INVALID_DATA" description="#[error.description]"/>
+			</when>
+			<when expression="#[(vars.errorObject != null) or (!isEmpty(vars.errorObject.description) and (error.errorType.identifier != 'INVALID_INPUT'))]">
+				<set-variable value="#[400 as Number]" doc:name="Set HTTP Status" doc:id="4f04c920-a495-49de-a0d0-67db201cc317" variableName="httpStatus"/>
+				<raise-error doc:name="Raise error" doc:id="5f0d6fdf-1dbc-46fc-8d3d-999d6de482f5" description="#[output java import * from dw::core::Strings --- capitalize(vars.errorObject.errorType.identifier)]" type="SFDC:INVALID_INPUT"/>
+			</when>
+			<when expression="#[isEmpty(payload) == true]">
+				<set-variable value="#[404 as Number]" doc:name="Set Variable" doc:id="0af977ea-40a2-4a39-888d-455b07b86459" variableName="httpStatus"/>
+				<raise-error doc:name="Raise error" doc:id="ebf14591-8bda-428d-a2da-dbf64ceb6f50" type="SFDC:NOT_FOUND" description="The account has been deleted or moved permanently"/>
+			</when>
+		</choice>
+	</sub-flow>
+	
+	
+	</mule>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	
+	
+	<flow name="get-accountsFlow" doc:id="e3a04931-086e-4a9b-b1cb-d3b2a759b905" >
+		<logger level="INFO" doc:name="Flow Start Logger" doc:id="47710e54-a357-4773-a3b9-26f85a160530" message='Get Account Flow Start for Account Id #[attributes.uriParams.account_id default ""]' />
+		<set-variable value="#[attributes.uriParams.account_id]" doc:name="Set Account Id" doc:id="84db7fda-cbec-415b-95f9-9e157ba5b3b9" variableName="accountId"/>
+		<until-successful maxRetries="2" doc:name="Until Successful" doc:id="21fe04a9-fc80-4565-b1a2-62008647a023" millisBetweenRetries="30000">
+			<try doc:name="Try" doc:id="c6a10073-8bb7-40e1-a37b-e5c16b047f76">
+			<salesforce:query doc:name="Query" doc:id="353c63f8-c894-4a41-bf89-10a479212094" config-ref="salesforce-config">
+					<salesforce:salesforce-query ><![CDATA[SELECT Name, AccountNumber, email__c, Phone, Fax, BillingStreet, BillingCity, BillingState, BillingPostalCode, BillingCountry,
+ShippingStreet, ShippingCity, ShippingState, ShippingPostalCode, ShippingCountry FROM Account WHERE Id =:account_id
+
+]]></salesforce:salesforce-query>
+					<salesforce:parameters ><![CDATA[#[output application/java
+---
+{
+	"account_id" : vars.accountId
+}]]]></salesforce:parameters>
+				</salesforce:query>
+				<error-handler >
+					<on-error-continue enableNotifications="false" logException="false" doc:name="On Error Continue" doc:id="8945dd1d-9a67-4fd9-93ac-ba5468351d55" when="#[error.errorType.identifier != 'CONNECTIVITY']">
+						<ee:transform doc:name="Transform Message" doc:id="7a84f668-377a-4327-9cad-7bbe486ff05b" >
+							<ee:message >
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="errorPayload" ><![CDATA[error.errorMessage.payload]]></ee:set-variable>
+								<ee:set-variable variableName="errorObject" ><![CDATA[error]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+					</on-error-continue>
+				</error-handler>
+		</try>
+		</until-successful>
+		<logger level="INFO" doc:name="Log Response After Calling SFDC" doc:id="14b942e8-1247-43a4-81e5-2e1c3fbc4407" message="Get Account Response After Calling SFDC: #[output json --- payload]"/>
+		<flow-ref doc:name="error-checkpoint-subflow" doc:id="1d3a5fd3-5044-42dd-a3d7-2f92932654bb" name="sfdc-checkpoint-subflow"/>
+		<ee:transform doc:name="Map Get Account Response" doc:id="88b73511-abbd-4c42-841f-72161f7f60cc" >
+			<ee:message >
+				<ee:set-payload resource="dataweave/map-get-account-response.dwl" />
+			
+</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Log Response Payload" doc:id="04370a84-8c5b-48e3-9f3e-5da34f88b1ab" message="Get Account Response After Transform: #[payload]"/>
+		<logger level="INFO" doc:name="Logger End Flow " doc:id="0c3c8c9f-bdda-4d06-b380-9238fdaba664" message="Get Account Flow End"/>
+		<error-handler ref="globalError_Handler" />
+	
+</flow>
+	
+	
+	</mule>
